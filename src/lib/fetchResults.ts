@@ -1,15 +1,34 @@
 import chalk from "chalk";
+import * as v from "valibot";
+import { MARKER } from "~/lib/utils";
 import type { Result } from "~/types";
-import { MARKER } from "~/utils";
 
+import {
+    type CBSEResultResponse,
+    type CBSEResultResponseSchema,
+    SuccessOrFailedResponseSchema,
+} from "~/schemas/CBSEResultSchema";
+
+/**
+ * Props which {@link fetchResults} takes
+ */
 export type FetchResultsProps = {
     rollnumber: string;
     admitnumber: string;
 };
+
+/**
+ * Fetches result from digilocker using its internal api.
+ * Takes in student's Admit Card number and Roll Number.
+ * @param FetchResultProps containing student's admit card number and rollnumber
+ * @returns Promise<{@link CBSEResult}>
+ */
 export async function fetchResults({
     admitnumber,
     rollnumber,
-}: FetchResultsProps): Promise<Result> {
+}: FetchResultsProps): Promise<CBSEResultResponse> {
+    // thats why api endpoints should be behind some authetication
+    // fetch copied as is from digilocker's site
     const response = await fetch(
         "https://results.digilocker.gov.in/api/cbse/hscer/results",
         {
@@ -23,26 +42,27 @@ export async function fetchResults({
                 Referer:
                     "https://results.digilocker.gov.in/CBSE12th2026resultXIInruew.html",
             },
+
+            // since we are generating the rollnumber and admit card number it can be inserted as is
+            // but ideally this should be encoded into url params
             body: `rroll=${rollnumber}&year=2026&admn_id=${admitnumber}`,
         },
     );
 
-    const json: Result = await response.json();
-
-    /**
-     * If Errored
-     * {
-     *     "status": 400,
-     *     "request_id": "721cbe64-4b3a-4e02-81fe-82e77496ef6d",
-     *     "error_code": "ERR_VALUE_MISMATCH",
-     *     "message": "Invalid Admission id"
-     * },
-     */
-    if (json.status === 400) {
+    const json = await response.json();
+    const results = v.safeParse(SuccessOrFailedResponseSchema, json);
+    if (!results.success) {
         throw new Error(
-            `${MARKER} Error in fetching results for ${rollnumber} | ${admitnumber}.\n Error: ${chalk.yellow(json.error_code)} | ${json.message}`,
+            `${MARKER} Error in Result Parsing.\n${chalk.yellow("Issues")}:\n${JSON.stringify(results.issues, null, 4)}`,
         );
     }
 
-    return json;
+    const parsed = results.output;
+    if (parsed.status === 400) {
+        throw new Error(
+            `${MARKER} Error fetching results for ${rollnumber} | ${admitnumber}.\n Error: ${chalk.yellow(json.error_code)} | ${json.message}`,
+        );
+    }
+
+    return parsed;
 }

@@ -6,14 +6,6 @@ export type GenerateAdmitCardNumberProps = {
     centerNumber: string;
 };
 
-export class AdmitCardNumberGeneratorError extends Error {
-    constructor(msg: string) {
-        super();
-        this.message = msg;
-        this.name = "AdmitCardNumberGeneratorError";
-    }
-}
-
 /**
  * Algorithm:
  * Admit card number is of format FMRRSSCC
@@ -36,7 +28,7 @@ export function generateAdmitCardNumber({
     schoolNumber,
 }: GenerateAdmitCardNumberProps): string {
     if (centerNumber.length === 0 || centerNumber.length % 2 !== 0) {
-        throw new AdmitCardNumberGeneratorError(
+        throw new Error(
             `Center number (${centerNumber} should be even digits long.`,
         );
     }
@@ -52,7 +44,7 @@ export function generateAdmitCardNumber({
     // error if any part is missing or empty
     const falsey = [F, M, rr, ss, cc].filter((s) => !s || s.length === 0);
     if (falsey.length > 0) {
-        throw new AdmitCardNumberGeneratorError(
+        throw new Error(
             `Some values are falsey: \nFathers Name: ${fathersName} | ${F}\Mothers Name: ${mothersName} | ${M}\nRoll Number: ${rollnumber} | ${rr}\nSchool Number: ${schoolNumber} | ${ss}\nCenter Number: ${centerNumber} | ${cc}`,
         );
     }
